@@ -1,0 +1,6 @@
+jwt:
+  secret:
+    key: ${secret.jwt.key}
+  metadata:
+    expiration_in_minutes: 30
+    issuer: ${spring.application.name}
