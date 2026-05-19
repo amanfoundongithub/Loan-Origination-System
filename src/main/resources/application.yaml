@@ -1,0 +1,6 @@
+# Server port configuration to configure the port
+server:
+  port: 8000
+spring:
+  application:
+    name: gateway-service
