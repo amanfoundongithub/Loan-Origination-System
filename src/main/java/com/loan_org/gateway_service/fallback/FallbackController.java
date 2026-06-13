@@ -1,4 +1,4 @@
-package com.loan_org.gateway_service.controller;
+package com.loan_org.gateway_service.fallback;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
