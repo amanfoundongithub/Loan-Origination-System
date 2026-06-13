@@ -9,11 +9,6 @@ services:
       - "8500:8500"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - REDIS_HOST=gateway-redis
-      - REDIS_PORT=6379
-      - EUREKA_HOST=eureka-server
-      - ZIPKIN_HOST=zipkin
-      - JWT_KEY=<Your key here>
     depends_on:
       - gateway-redis
       - zipkin
