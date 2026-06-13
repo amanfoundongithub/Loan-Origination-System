@@ -1,8 +1,7 @@
-# Declare the server port as 8200
+# Declare the server port as 8500
 server:
   port: 8500
 
-# Define spring configuration beans
 spring:
   application:
     name: loan-origination-service
@@ -13,11 +12,21 @@ spring:
           uri: http://localhost:4200
           predicates:
             - Path=/api/v1/auth/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: iamServiceCircuitBreaker
+                fallbackUri: forward:/fallback/iam
 
         - id: docs-service-route
           uri: http://localhost:5800
           predicates:
             - Path=/api/v1/documents/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: docsServiceCircuitBreaker
+                fallbackUri: forward:/fallback/docs
 
         - id: default
           uri: http://httpbin.org
@@ -33,6 +42,29 @@ filters:
     header: Authorization
     excluded:
       - /api/v1/auth/**
+
+resilience4j:
+  circuitbreaker:
+    instances:
+
+      docsServiceCircuitBreaker:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+
+      iamServiceCircuitBreaker:
+        slidingWindowSize: 6
+        failureRateThreshold: 75
+        waitDurationInOpenState: 4000
+
+  timelimiter:
+    instances:
+
+      docsServiceCircuitBreaker:
+        timeoutDuration: 3s
+
+      iamServiceCircuitBreaker:
+        timeoutDuration: 4s
 
 # Actuator level management
 management:
