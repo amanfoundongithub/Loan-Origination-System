@@ -1,37 +1,75 @@
 package com.loan_org.gateway_service.filter;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.util.UUID;
+
 @Slf4j
 @Component
 public class LoggingFilter implements GlobalFilter, Ordered {
+
+    @Value("${filters.logging.header}")
+    private String correlationHeader;
+
+    @Value("${filters.logging.start-time}")
+    private String startTimeAttribute;
 
     @Override
     public Mono<Void> filter(
             ServerWebExchange exchange,
             GatewayFilterChain chain
     ) {
-        // Record metrics
-        String requestPath = exchange.getRequest().getURI().getPath();
-        String requestMethod = exchange.getRequest().getMethod().name();
 
-        // Log the request received
-        log.info("Received request for {} with {} method", requestPath, requestMethod);
+        // Log the request received from the exchange
+        ServerHttpRequest request = exchange.getRequest();
+        String requestPath = request.getURI().getPath();
+        String requestMethod = request.getMethod().name();
 
-        return chain.filter(exchange)
+        // Traceability: Extract or generate a Correlation ID
+        String correlationId = request.getHeaders().getFirst(correlationHeader);
+        if (correlationId == null || correlationId.isEmpty()) {
+            correlationId = UUID.randomUUID().toString();
+            log.warn("The request does not have any Correlation ID assigned to it, so assigning a random correlationId: {}",
+                    correlationId);
+        }
+
+        // Mutate the request to pass the header downstream to IAM/Docs services
+        ServerWebExchange mutatedExchange = exchange.mutate()
+                .request(request.mutate().header(correlationHeader, correlationId).build())
+                .build();
+
+        // Performance Tracking: Save the start timestamp in exchange attributes
+        mutatedExchange.getAttributes().put(startTimeAttribute, System.currentTimeMillis());
+
+        // Log the acknowledgment for the request
+        log.info("[ID: {}] Received {} request for {}", correlationId, requestMethod, requestPath);
+
+        // Add to response header
+        final String finalCorrelationId = correlationId;
+        mutatedExchange.getResponse().beforeCommit(() -> {
+            mutatedExchange.getResponse().getHeaders().add(correlationHeader, finalCorrelationId);
+            return Mono.empty();
+        });
+
+        return chain.filter(mutatedExchange)
                 .then(Mono.fromRunnable(
                         () -> {
-                            int statusCode =
-                                    exchange.getResponse().getStatusCode() != null ?
-                                            exchange.getResponse().getStatusCode().value(): 0;
+                            Long startTime = mutatedExchange.getAttribute(startTimeAttribute);
+                            long duration = (startTime != null) ? (System.currentTimeMillis() - startTime) : 0;
 
-                            log.info("Response status code: {}", statusCode);
+                            HttpStatusCode statusCode = mutatedExchange.getResponse().getStatusCode();
+                            int codeValue = (statusCode != null) ? statusCode.value() : 500;
+
+                            log.info("[ID: {}] Responded with status {} in {} ms", finalCorrelationId, codeValue, duration);
                         }
                 ));
 

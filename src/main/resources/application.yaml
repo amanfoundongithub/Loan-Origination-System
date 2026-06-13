@@ -1,15 +1,108 @@
-########################################################
-# application.yaml -> default entry point of the application's
-# configurations.
-########################################################
+# Declare the server port as 8500
 server:
-  port: 8000
-spring:
+  port: 8500
 
+spring:
   application:
     name: loan-origination-service
 
-  config:
-    import:
-      - application-config.yaml
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
+  cloud:
+    gateway:
+      routes:
+        - id: iam-service-route
+          uri: http://localhost:4200
+          predicates:
+            - Path=/api/v1/auth/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                key-resolver: "#{@ipKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: iamServiceCircuitBreaker
+                fallbackUri: forward:/fallback/iam
+
+        - id: docs-service-route
+          uri: http://localhost:5800
+          predicates:
+            - Path=/api/v1/documents/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@ipKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: docsServiceCircuitBreaker
+                fallbackUri: forward:/fallback/docs
+
+        - id: default
+          uri: http://httpbin.org
+          predicates:
+            - Path=/**
+
+
+filters:
+  logging:
+    header: X-Correlation-ID
+    start-time: startTime
+  jwt:
+    header: Authorization
+    excluded:
+      - /api/v1/auth/**
+
+resilience4j:
+  circuitbreaker:
+    instances:
+
+      docsServiceCircuitBreaker:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+
+      iamServiceCircuitBreaker:
+        slidingWindowSize: 6
+        failureRateThreshold: 75
+        waitDurationInOpenState: 4000
+
+  timelimiter:
+    instances:
+
+      docsServiceCircuitBreaker:
+        timeoutDuration: 3s
+
+      iamServiceCircuitBreaker:
+        timeoutDuration: 4s
+
+# Actuator level management
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, gateway, loggers
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: "API Gateway for the Loan Origination System"
+    version: "1.0.0"
+
+logging:
+  level:
+    root: INFO
