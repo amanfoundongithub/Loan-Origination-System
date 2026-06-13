@@ -12,6 +12,10 @@ spring:
       port: 6379
 
   cloud:
+    loadbalancer:
+      cache:
+        ttl: 30s
+        capacity: 256
     gateway:
       routes:
         - id: iam-service-route
