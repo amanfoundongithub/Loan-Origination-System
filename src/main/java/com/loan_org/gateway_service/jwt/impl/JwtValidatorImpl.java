@@ -1,7 +1,6 @@
 package com.loan_org.gateway_service.jwt.impl;
 
 import com.loan_org.gateway_service.jwt.JwtValidator;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;

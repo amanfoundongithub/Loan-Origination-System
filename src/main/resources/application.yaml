@@ -1,15 +1,17 @@
-# Declare the server port as 8500
 server:
   port: 8500
+  shutdown: graceful
 
 spring:
   application:
     name: loan-origination-service
+  profiles:
+    active: local # Overridden by SPRING_PROFILES_ACTIVE in Docker environment
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
 
   cloud:
     loadbalancer:
@@ -53,7 +55,6 @@ spring:
           predicates:
             - Path=/**
 
-
 filters:
   logging:
     header: X-Correlation-ID
@@ -66,40 +67,38 @@ filters:
 resilience4j:
   circuitbreaker:
     instances:
-
       docsServiceCircuitBreaker:
         slidingWindowSize: 10
         failureRateThreshold: 50
-        waitDurationInOpenState: 10000
-
+        waitDurationInOpenState: 10s # Tip: Spring Boot prefers time duration units (e.g. 10s) over raw integers
       iamServiceCircuitBreaker:
         slidingWindowSize: 6
         failureRateThreshold: 75
-        waitDurationInOpenState: 4000
+        waitDurationInOpenState: 4s
 
   timelimiter:
     instances:
-
       docsServiceCircuitBreaker:
         timeoutDuration: 3s
-
       iamServiceCircuitBreaker:
         timeoutDuration: 4s
 
-# Actuator level management
 management:
   endpoints:
     web:
       exposure:
-        include: health, info, prometheus, gateway, loggers
+        include: health, info, prometheus, gateway, circuitbreakers
   endpoint:
     health:
       show-details: always
-    prometheus:
-      enabled: true
-  metrics:
-    tags:
-      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      type: W3C
+  otlp:
+    tracing:
+      endpoint: http://${ZIPKIN_HOST}:9411/api/v2/spans
 
 info:
   app:
@@ -114,9 +113,9 @@ logging:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://${EUREKA_HOST}:8761/eureka/
     fetch-registry: true
     register-with-eureka: true
 
 jwt:
-  signing-key: <Token here>
+  signing_key: ${JWT_KEY}
