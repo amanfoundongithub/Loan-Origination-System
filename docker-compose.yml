@@ -1,0 +1,64 @@
+name: loan_origination_system
+version: '3.8'
+
+services:
+  gateway-service:
+    build: .
+    container_name: gateway-service
+    ports:
+      - "8500:8500"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - REDIS_HOST=gateway-redis
+      - REDIS_PORT=6379
+      - EUREKA_HOST=eureka-server
+      - ZIPKIN_HOST=zipkin
+      - JWT_KEY=<Your key here>
+    depends_on:
+      - gateway-redis
+      - zipkin
+    networks:
+      - loan-network
+
+  gateway-redis:
+    image: redis:alpine
+    container_name: gateway-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - loan-network
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - loan-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - gateway-service
+    networks:
+      - loan-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=<Your pasword here>
+    networks:
+      - loan-network
+
+networks:
+  loan-network:
+    external:
+      name: loan_origination_system_loan-network

@@ -1,5 +1,6 @@
 package com.loan_org.gateway_service.filter;
 
+import io.micrometer.tracing.Tracer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @Slf4j
@@ -22,6 +24,12 @@ public class LoggingFilter implements GlobalFilter, Ordered {
 
     @Value("${filters.logging.start-time}")
     private String startTimeAttribute;
+
+    private final Tracer tracer;
+
+    public LoggingFilter(Tracer tracer) {
+        this.tracer = tracer;
+    }
 
     @Override
     public Mono<Void> filter(
@@ -36,9 +44,14 @@ public class LoggingFilter implements GlobalFilter, Ordered {
 
         // Traceability: Extract or generate a Correlation ID
         String correlationId = request.getHeaders().getFirst(correlationHeader);
+
+        // Micrometer
+        String traceId = (tracer.currentSpan() != null) ? Objects.requireNonNull(tracer.currentSpan()).context().traceId() : null;
+
+
         if (correlationId == null || correlationId.isEmpty()) {
-            correlationId = UUID.randomUUID().toString();
-            log.warn("The request does not have any Correlation ID assigned to it, so assigning a random correlationId: {}",
+            correlationId = (traceId != null) ? traceId : java.util.UUID.randomUUID().toString();
+            log.warn("The request does not have any Correlation ID assigned to it, so assigning a correlationId from micrometer: {}",
                     correlationId);
         }
 
