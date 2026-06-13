@@ -15,7 +15,7 @@ spring:
     gateway:
       routes:
         - id: iam-service-route
-          uri: http://localhost:4200
+          uri: lb://IAM-SERVICE
           predicates:
             - Path=/api/v1/auth/**
           filters:
@@ -30,7 +30,7 @@ spring:
                 fallbackUri: forward:/fallback/iam
 
         - id: docs-service-route
-          uri: http://localhost:5800
+          uri: lb://DOCS-SERVICE
           predicates:
             - Path=/api/v1/documents/**
           filters:
@@ -106,3 +106,10 @@ info:
 logging:
   level:
     root: INFO
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
