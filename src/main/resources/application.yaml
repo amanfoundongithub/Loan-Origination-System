@@ -10,8 +10,8 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
 
   cloud:
     loadbalancer:
@@ -98,7 +98,7 @@ management:
       type: W3C
   otlp:
     tracing:
-      endpoint: http://${ZIPKIN_HOST:localhost}:9411/api/v2/spans
+      endpoint: http://${ZIPKIN_HOST}:9411/api/v2/spans
 
 info:
   app:
@@ -113,7 +113,7 @@ logging:
 eureka:
   client:
     service-url:
-      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+      defaultZone: http://${EUREKA_HOST}:8761/eureka/
     fetch-registry: true
     register-with-eureka: true
 
