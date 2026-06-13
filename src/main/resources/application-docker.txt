@@ -1,0 +1,5 @@
+REDIS_HOST: gateway-redis
+REDIS_PORT: 6379
+EUREKA_HOST: eureka-server
+ZIPKIN_HOST: zipkin
+JWT_KEY:
