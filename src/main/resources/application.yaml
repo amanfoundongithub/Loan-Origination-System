@@ -1,15 +1,54 @@
-########################################################
-# application.yaml -> default entry point of the application's
-# configurations.
-########################################################
+# Declare the server port as 8200
 server:
-  port: 8000
-spring:
+  port: 8500
 
+# Define spring configuration beans
+spring:
   application:
     name: loan-origination-service
+  cloud:
+    gateway:
+      routes:
+        - id: iam-service-route
+          uri: http://localhost:4200
+          predicates:
+            - Path=/api/v1/auth/**
 
-  config:
-    import:
-      - application-config.yaml
+        - id: docs-service-route
+          uri: http://localhost:5800
+          predicates:
+            - Path=/api/v1/documents/**
 
+        - id: default
+          uri: http://httpbin.org
+          predicates:
+            - Path=/**
+
+correlation:
+  header: X-Correlation-ID
+  start-time: startTime
+
+# Actuator level management
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, gateway, loggers
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: "API Gateway for the Loan Origination System"
+    version: "1.0.0"
+
+logging:
+  level:
+    root: INFO
