@@ -1,0 +1,7 @@
+REDIS_HOST: localhost
+REDIS_PORT: 6379
+
+EUREKA_HOST: localhost
+ZIPKIN_HOST: localhost
+
+JWT_KEY: <Your key here>
