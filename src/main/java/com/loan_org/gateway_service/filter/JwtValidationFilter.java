@@ -43,7 +43,7 @@ public class JwtValidationFilter implements GlobalFilter, Ordered {
         }
 
         String authHeaderKey = jwtConfig.getHeader();
-        if (!request.getHeaders().containsKey(authHeaderKey)) {
+        if (!Boolean.parseBoolean(request.getHeaders().getFirst(authHeaderKey))) {
             log.error("Authorization header [{}] missing for path: {}", authHeaderKey, requestPath);
             return onError(exchange);
         }

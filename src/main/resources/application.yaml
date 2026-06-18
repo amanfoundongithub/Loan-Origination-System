@@ -6,58 +6,70 @@ spring:
   application:
     name: loan-origination-service
   profiles:
-    active: local # Overridden by SPRING_PROFILES_ACTIVE in Docker environment
-
+    active: local
   data:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
-
   cloud:
     loadbalancer:
       cache:
         ttl: 30s
         capacity: 256
     gateway:
-      routes:
-        - id: iam-service-route
-          uri: lb://IAM-SERVICE
-          predicates:
-            - Path=/api/v1/auth/**
-          filters:
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 5
-                redis-rate-limiter.burstCapacity: 10
-                key-resolver: "#{@ipKeyResolver}"
-            - name: CircuitBreaker
-              args:
-                name: iamServiceCircuitBreaker
-                fallbackUri: forward:/fallback/iam
-
-        - id: docs-service-route
-          uri: lb://DOCS-SERVICE
-          predicates:
-            - Path=/api/v1/documents/**
-          filters:
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 20
-                redis-rate-limiter.burstCapacity: 40
-                key-resolver: "#{@ipKeyResolver}"
-            - name: CircuitBreaker
-              args:
-                name: docsServiceCircuitBreaker
-                fallbackUri: forward:/fallback/docs
-
-        - id: default
-          uri: http://httpbin.org
-          predicates:
-            - Path=/**
+      server:
+        webflux:
+          routes:
+            - id: iam-service-route
+              uri: lb://IAM-SERVICE
+              predicates:
+                - Path=/api/v1/auth/**,/api/v1/admin/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 5
+                    redis-rate-limiter.burstCapacity: 10
+                    key-resolver: "#{@ipKeyResolver}"
+                - name: CircuitBreaker
+                  args:
+                    name: iamServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/iam
+            - id: notification-service-route
+              uri: lb://NOTIFICATION-SERVICE
+              predicates:
+                - Path=/api/v1/template/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 5
+                    redis-rate-limiter.burstCapacity: 20
+                    key-resolver: "#{@ipKeyResolver}"
+                - name: CircuitBreaker
+                  args:
+                    name: notificationServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/notification
+            - id: docs-service-route
+              uri: lb://DOCS-SERVICE
+              predicates:
+                - Path=/api/v1/documents/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 20
+                    redis-rate-limiter.burstCapacity: 40
+                    key-resolver: "#{@ipKeyResolver}"
+                - name: CircuitBreaker
+                  args:
+                    name: docsServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/docs
+            - id: default
+              uri: http://httpbin.org
+              predicates:
+                - Path=/**
 
 filters:
   logging:
-    header: X-Correlation-ID
+    header: X-Correlation-Id
     start-time: startTime
   jwt:
     header: Authorization
@@ -70,17 +82,22 @@ resilience4j:
       docsServiceCircuitBreaker:
         slidingWindowSize: 10
         failureRateThreshold: 50
-        waitDurationInOpenState: 10s # Tip: Spring Boot prefers time duration units (e.g. 10s) over raw integers
+        waitDurationInOpenState: 10s
       iamServiceCircuitBreaker:
         slidingWindowSize: 6
         failureRateThreshold: 75
         waitDurationInOpenState: 4s
-
+      notificationServiceCircuitBreaker:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
   timelimiter:
     instances:
       docsServiceCircuitBreaker:
         timeoutDuration: 3s
       iamServiceCircuitBreaker:
+        timeoutDuration: 4s
+      notificationServiceCircuitBreaker:
         timeoutDuration: 4s
 
 management:
@@ -91,14 +108,6 @@ management:
   endpoint:
     health:
       show-details: always
-  tracing:
-    sampling:
-      probability: 1.0
-    propagation:
-      type: W3C
-  otlp:
-    tracing:
-      endpoint: http://${ZIPKIN_HOST}:9411/api/v2/spans
 
 info:
   app:
