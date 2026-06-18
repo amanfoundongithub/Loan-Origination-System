@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.3.0'
+    id 'org.springframework.boot' version '4.1.0'
     id 'io.spring.dependency-management' version '1.1.5'
 }
 
@@ -9,7 +9,7 @@ version = '0.0.1-SNAPSHOT'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -18,38 +18,37 @@ repositories {
 }
 
 ext {
-    set('springCloudVersion', "2023.0.2")
+    set('springCloudVersion', "2025.1.2")
 }
 
 dependencies {
-
-    // CORE starter dependencies
-    implementation 'org.springframework.cloud:spring-cloud-starter-gateway'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // Core Spring Cloud Webflux Gateway Server
+    implementation 'org.springframework.cloud:spring-cloud-starter-gateway-server-webflux'
     implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j'
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
     implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 
-    // Others
+    // Reactive Persistence & Infrastructure
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
     implementation 'com.github.ben-manes.caffeine:caffeine'
-    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+
+    // Core Metrics & Production-ready Features
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
-    implementation 'io.opentelemetry:opentelemetry-exporter-zipkin'
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 
-    runtimeOnly    'io.micrometer:micrometer-registry-prometheus'
+    // JWT Configuration
+    implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
 
-    // JWT Helper
-    implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
-    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
-    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
-
+    // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // Developer Tooling
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 dependencyManagement {
