@@ -1,4 +1,4 @@
-name: loan_origination_system
+name: los_gateway
 version: '3.8'
 
 services:
@@ -55,5 +55,5 @@ services:
 
 networks:
   loan-network:
-    external:
-      name: loan_origination_system_loan-network
+    name: los-network
+    external: true
